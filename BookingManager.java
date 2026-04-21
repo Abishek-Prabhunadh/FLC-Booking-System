@@ -171,4 +171,125 @@ public class BookingManager
 	}
 
 
+
+
+    public boolean cancelBooking(int mbId, int bkgId)
+	{
+	    String sql = "UPDATE bookings SET status = 'cancelled' " +
+	                 "WHERE booking_id = ? AND member_id = ? " +
+	                 "AND status IN ('booked','changed')";
+
+	    try (Connection con = DatabaseConnection.connect();
+	    	 PreparedStatement ps = con.prepareStatement(sql))
+	    {
+	        if (con == null)
+	        {
+	            return false;
+	        }
+
+	        
+            ps.setInt(1, bkgId);
+            ps.setInt(2, mbId);
+
+            int rows = ps.executeUpdate();
+
+            if (rows > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+
+	    }
+	    catch (Exception e)
+	    {
+	        System.out.println("Cancellation Error: " + e.getMessage());
+	        return false;
+	    }
+	}
+	
+	
+	
+	
+	public boolean changeBooking(int mbId, int bkgId, int newLsnId)
+	{
+	    System.out.println("Processing change request for Booking #" + bkgId + "...");
+
+	    try (Connection con = DatabaseConnection.connect())
+	    {
+	        if (con == null)
+	        {
+	            return false;
+	        }
+
+	        if (capacityCheck(con, newLsnId).equals("FULL"))
+	        {
+	            System.out.println("Change failed: New lesson is full (Max capacity 4 Only).");
+	            return false;
+	        }
+
+	        
+	        String sql =
+	            "SELECT COUNT(*) FROM bookings b " +
+	            "JOIN lessons l1 ON b.lesson_id = l1.lesson_id " +
+	            "JOIN lessons l2 ON l2.lesson_id = ? " +
+	            "WHERE b.member_id = ? " +
+	            "AND b.status != 'cancelled' " +
+	            "AND b.booking_id != ? " +
+	            "AND l1.lesson_day = l2.lesson_day " +
+	            "AND l1.time_slot = l2.time_slot " +
+	            "AND l1.weekend_number = l2.weekend_number";
+
+	        try (PreparedStatement ps = con.prepareStatement(sql))
+	        {
+	            ps.setInt(1, newLsnId);
+	            ps.setInt(2, mbId);
+	            ps.setInt(3, bkgId);
+
+	            try (ResultSet rs = ps.executeQuery())
+	            {
+	                if (rs.next() && rs.getInt(1) > 0)
+	                {
+	                    System.out.println("Change failed: You already have another lesson scheduled at this time.");
+	                    return false;
+	                }
+	            }
+	        }
+
+	        
+	        String update =
+	            "UPDATE bookings SET lesson_id = ?, status = 'changed' " +
+	            "WHERE booking_id = ? AND member_id = ?";
+
+	        try (PreparedStatement ps = con.prepareStatement(update))
+	        {
+	            ps.setInt(1, newLsnId);
+	            ps.setInt(2, bkgId);
+	            ps.setInt(3, mbId);
+
+	            int rows = ps.executeUpdate();
+
+	            if (rows > 0)
+	            {
+	                System.out.println("Success: Booking #" + bkgId +
+	                                   " changed to Lesson ID " + newLsnId);
+	                return true;
+	            }
+	            else
+	            {
+	                System.out.println("Error: Booking not found or unauthorized.");
+	                return false;
+	            }
+	        }
+
+	    }
+	    catch (Exception e)
+	    {
+	        System.out.println("Change Booking Error: " + e.getMessage());
+	        return false;
+	    }
+	}
+
 }
