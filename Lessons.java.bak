@@ -1,0 +1,174 @@
+package furzefield;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+public class Lessons
+{
+	
+	public boolean attendLesson(int mbId, int bkgId, int rating, String comment)
+    {
+        String sql = "UPDATE bookings SET status = 'attended' " +
+                     "WHERE booking_id = ? AND member_id = ? " +
+                     "AND status IN ('booked', 'changed')";
+
+        String review = "INSERT INTO reviews (booking_id, rating, comment) VALUES (?, ?, ?)";
+
+        try (Connection con = DatabaseConnection.connect())
+        {
+            if (con == null)
+            {
+            	return false;
+           	}
+
+            con.setAutoCommit(false);
+
+            try (PreparedStatement psUpdate = con.prepareStatement(sql);
+                 PreparedStatement psReview = con.prepareStatement(review))
+            {
+
+                psUpdate.setInt(1, bkgId);
+                psUpdate.setInt(2, mbId);
+
+                int rows = psUpdate.executeUpdate();
+
+                if (rows > 0)
+                {
+                    psReview.setInt(1, bkgId);
+                    psReview.setInt(2, rating);
+                    psReview.setString(3, comment);
+                    psReview.executeUpdate();
+
+                    con.commit();
+
+                    System.out.println("Success: Attendance recorded.");
+                    return true;
+                }
+                else
+                {
+                    con.rollback();
+                    System.out.println("Invalid booking or not allowed.");
+                    return false;
+                }
+
+            }
+            catch (SQLException e)
+            {
+                con.rollback();
+                System.out.println("Transaction Error: " + e.getMessage());
+                return false;
+            }
+
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Connection Error: " + e.getMessage());
+            return false;
+        }
+    }
+	
+	
+	
+	
+	
+	public void showLessons(String sql, String day)
+	{
+        Connection con = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+        
+        
+        try
+        {
+            con = DatabaseConnection.connect();
+            ps = con.prepareStatement(sql);
+            if (day != null && !day.isEmpty())
+            {
+                ps.setString(1, "%" + day + "%");
+            }
+            rs = ps.executeQuery();
+
+            System.out.println("\nLesson ID | Exercise Type |   Day   |  Time Slot |  Week  |  Price");
+            System.out.println("------------------------------------------------------------------");
+            while(rs.next())
+            {
+            
+                System.out.printf("L%-8d | %-15s | %-10s | %-10s | W%-4d | £%.2f\n",
+                        rs.getInt("lesson_id"),
+                        rs.getString("exercise_type"),
+                        rs.getString("lesson_day"),
+                        rs.getString("time_slot"),
+                        rs.getInt("weekend_number"),
+                        rs.getDouble("price"));
+            }
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Searching Error: " + e.getMessage());
+        }
+    }
+
+	
+	
+	
+	
+	public static void seedLessons()
+    {
+        String sql = "SELECT COUNT(*) FROM lessons";
+
+        try (Connection con = DatabaseConnection.connect();
+             Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql))
+        {
+
+            if (rs.next() && rs.getInt(1) > 0)
+            {
+                return;
+            }
+            String ins = "INSERT INTO lessons " +
+                    "(exercise_type, lesson_day, time_slot, weekend_number, price) " +
+                    "VALUES (?, ?, ?, ?, ?)";
+
+            try (PreparedStatement ps = con.prepareStatement(ins))
+            {
+                String[] exercises = {"Yoga", "Zumba", "Aquacise", "Box Fit", "Body Blitz"};
+                double[] prices = {15.00, 12.00, 20.00, 18.00, 22.00};
+                String[] days = {"Saturday", "Sunday"};
+                String[] slots = {"Morning", "Afternoon", "Evening"};
+
+                int index = 0;
+
+                for (int week = 1; week <= 8; week++)
+                {
+                    for (String day : days)
+                    {
+                        for (String slot : slots)
+                        {
+                            int idx = index % exercises.length;
+
+                            ps.setString(1, exercises[idx]);
+                            ps.setString(2, day);
+                            ps.setString(3, slot);
+                            ps.setInt(4, week);
+                            ps.setDouble(5, prices[idx]);
+                            ps.addBatch();
+
+                            index++;
+                        }
+                    }
+                }
+                ps.executeBatch();
+            }
+            System.out.println("Lessons seeded");
+
+        }
+        catch (Exception e)
+        {
+            System.out.println("Error seeding lessons: " + e.getMessage());
+        }
+    }
+
+}
