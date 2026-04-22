@@ -116,6 +116,70 @@ public class MainApp
 	                    }
 	                }
 	            }
+				else if (choice == 3)
+	            {
+	                System.out.println("\n--- Attend a Lesson ---");
+	                
+	                
+	                if (!showAttendBookings(userId))
+	                {
+	                    System.out.println("Returning to main menu...\n");
+	                    continue; 
+	                }
+
+	                System.out.print("\nEnter the Booking ID you are attending: ");
+	                while (!sc.hasNextInt())
+	                {
+	                    System.out.println("Invalid ID. Please enter a number.");
+	                    sc.next();
+	                }
+	                int bId = sc.nextInt();
+	                sc.nextLine(); 
+
+	                
+	                int userRating = 0;
+	                while (userRating < 1 || userRating > 5)
+	                {
+	                    System.out.println("\nHow satisfied were you with the lesson?");
+	                    System.out.println("1: Very Dissatisfied");
+	                    System.out.println("2: Dissatisfied");
+	                    System.out.println("3: Ok");
+	                    System.out.println("4: Satisfied");
+	                    System.out.println("5: Very Satisfied");
+	                    System.out.print("Select (1-5): ");
+	                    
+	                    if (sc.hasNextInt())
+	                    {
+	                        userRating = sc.nextInt();
+	                        if (userRating < 1 || userRating > 5)
+	                        {
+	                            System.out.println("Error: Please enter a number between 1 and 5.");
+	                        }
+	                    }
+	                    else
+	                    {
+	                        System.out.println("Invalid input. Please enter a number.");
+	                        sc.next(); 
+	                    }
+	                }
+	                sc.nextLine(); 
+
+	                System.out.print("Write a short review of the lesson: ");
+	                String userComment = sc.nextLine();
+
+	                
+	                boolean success = les.attendLesson(userId, bId, userRating, userComment);
+	                
+	                if (success)
+	                {
+	                    System.out.println("\nSuccess: Attendance confirmed and review saved!");
+	                }
+	                else
+	                {
+	                    System.out.println("\nError: Could not process attendance.");
+	                    System.out.println("Make sure the Booking ID belongs to you and hasn't been attended yet.");
+	                }
+	            }
 	        }
 	    }
 	    
@@ -159,6 +223,55 @@ public class MainApp
 			    default: System.out.println("\nError: An unexpected issue occurred.");
 			    break;
 			}
+	    }
+
+
+
+
+         public boolean showModifiedBookings(int memberId)
+	    {
+	        
+	        String sql = "SELECT b.booking_id, l.exercise_type, l.lesson_day, l.time_slot, b.status " +
+	                     "FROM bookings b " +
+	                     "JOIN lessons l ON b.lesson_id = l.lesson_id " +
+	                     "WHERE b.member_id = ? AND b.status IN ('booked')";
+
+	        try (Connection con = DatabaseConnection.connect();
+	             PreparedStatement ps = con.prepareStatement(sql))
+	        {
+
+	            ps.setInt(1, memberId);
+	            ResultSet rs = ps.executeQuery();
+
+	            boolean found = false;
+	            
+	            System.out.printf("%-12s %-15s %-12s %-12s %-10s%n", 
+	                              "Booking ID", "Exercise", "Day", "Time", "Status");
+	            System.out.println("------------------------------------------------------------------");
+
+	            while (rs.next()) {
+	                found = true;
+	                System.out.printf("%-12d %-15s %-12s %-12s %-10s%n",
+	                                  rs.getInt("booking_id"),
+	                                  rs.getString("exercise_type"),
+	                                  rs.getString("lesson_day"),
+	                                  rs.getString("time_slot"),
+	                                  rs.getString("status"));
+	            }
+
+	            if (!found)
+	            {
+	                System.out.println("No active bookings found for your account.");
+	                return false;
+	            }
+	            return true;
+	        }
+	        catch (SQLException e)
+	        {
+	            System.out.println("Error loading bookings: " + e.getMessage());
+	            return false;
+	        }
+
 	    }
 }
 

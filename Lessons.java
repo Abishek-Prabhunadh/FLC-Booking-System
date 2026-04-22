@@ -106,4 +106,68 @@ public class Lessons
         }
     }
 
+
+
+
+	public boolean attendLesson(int mbId, int bkgId, int rating, String comment)
+    {
+        String sql = "UPDATE bookings SET status = 'attended' " +
+                     "WHERE booking_id = ? AND member_id = ? " +
+                     "AND status IN ('booked', 'changed')";
+
+        String review = "INSERT INTO reviews (booking_id, rating, comment) VALUES (?, ?, ?)";
+
+        try (Connection con = DatabaseConnection.connect())
+        {
+            if (con == null)
+            {
+            	return false;
+           	}
+
+            con.setAutoCommit(false);
+
+            try (PreparedStatement psUpdate = con.prepareStatement(sql);
+                 PreparedStatement psReview = con.prepareStatement(review))
+            {
+
+                psUpdate.setInt(1, bkgId);
+                psUpdate.setInt(2, mbId);
+
+                int rows = psUpdate.executeUpdate();
+
+                if (rows > 0)
+                {
+                    psReview.setInt(1, bkgId);
+                    psReview.setInt(2, rating);
+                    psReview.setString(3, comment);
+                    psReview.executeUpdate();
+
+                    con.commit();
+
+                    System.out.println("Success: Attendance recorded.");
+                    return true;
+                }
+                else
+                {
+                    con.rollback();
+                    System.out.println("Invalid booking or not allowed.");
+                    return false;
+                }
+
+            }
+            catch (SQLException e)
+            {
+                con.rollback();
+                System.out.println("Transaction Error: " + e.getMessage());
+                return false;
+            }
+
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Connection Error: " + e.getMessage());
+            return false;
+        }
+    }
+
 }
