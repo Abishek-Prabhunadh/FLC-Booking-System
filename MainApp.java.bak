@@ -273,5 +273,55 @@ public class MainApp
 	        }
 
 	    }
+
+
+
+
+		public boolean showAttendBookings(int memberId)
+	    {
+	        
+	        String sql = "SELECT b.booking_id, l.exercise_type, l.lesson_day, l.time_slot, b.status " +
+	                     "FROM bookings b " +
+	                     "JOIN lessons l ON b.lesson_id = l.lesson_id " +
+	                     "WHERE b.member_id = ? AND b.status IN ('changed', 'booked')";
+
+	        try (Connection con = DatabaseConnection.connect();
+	             PreparedStatement ps = con.prepareStatement(sql))
+	        {
+
+	            ps.setInt(1, memberId);
+	            ResultSet rs = ps.executeQuery();
+
+	            boolean found = false;
+	            
+	            System.out.printf("%-12s %-15s %-12s %-12s %-10s%n", 
+	                              "Booking ID", "Exercise", "Day", "Time", "Status");
+	            System.out.println("------------------------------------------------------------------");
+
+	            while (rs.next()) {
+	                found = true;
+	                System.out.printf("%-12d %-15s %-12s %-12s %-10s%n",
+	                                  rs.getInt("booking_id"),
+	                                  rs.getString("exercise_type"),
+	                                  rs.getString("lesson_day"),
+	                                  rs.getString("time_slot"),
+	                                  rs.getString("status"));
+	            }
+
+	            if (!found)
+	            {
+	                System.out.println("No active bookings found for your account.");
+	                return false;
+	            }
+	            return true;
+	        }
+	        catch (SQLException e)
+	        {
+	            System.out.println("Error loading bookings: " + e.getMessage());
+	            return false;
+	        }
+
+	    }
+	    
 }
 

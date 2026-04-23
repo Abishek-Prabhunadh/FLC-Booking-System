@@ -180,6 +180,24 @@ public class MainApp
 	                    System.out.println("Make sure the Booking ID belongs to you and hasn't been attended yet.");
 	                }
 	            }
+
+				else if (choice == 4)
+	            {
+	                System.out.print("Enter month number (e.g., 1 for January): ");
+	                if (sc.hasNextInt())
+	                {
+	                    int month = sc.nextInt();
+	                    sc.nextLine();
+	                    
+	                    
+	                    bookingManager.generateMonthlyReport(month);
+	                }
+	                else
+	                {
+	                    System.out.println("Invalid input. Please enter a month number.");
+	                    sc.next();
+	                }
+	            }
 	        }
 	    }
 	    
