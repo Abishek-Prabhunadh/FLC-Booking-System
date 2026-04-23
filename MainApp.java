@@ -198,6 +198,26 @@ public class MainApp
 	                    sc.next();
 	                }
 	            }
+
+				else if (choice == 5)
+	            {
+	                System.out.print("\nEnter month number (1 or 2) for Income Report: ");
+	                int month = sc.nextInt();
+	                bookingManager.generateIncomeReport(month);
+	            }
+	            
+	            else if (choice == 6)
+				{
+	                System.out.println("\n------------------------------------------------");
+	                System.out.println(" Exiting FLC (Furzefield Leisure Centre) System   ");
+	                System.out.println("------------------------------------------------");
+	                System.out.println("Thank you for using our application.");
+	                System.out.println("Please visit again soon!");
+	                System.out.println("------------------------------------------------");
+	                
+	                
+	                System.exit(0); 
+	            }
 	        }
 	    }
 	    

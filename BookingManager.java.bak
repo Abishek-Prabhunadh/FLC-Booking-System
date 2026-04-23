@@ -292,4 +292,88 @@ public class BookingManager
 	    }
 	}
 
+
+
+	public void generateMonthlyReport(int monthNumber)
+	{
+		if (monthNumber < 1 || monthNumber > 2)
+		{
+		    System.out.println("Invalid month. Please enter 1 or 2.");
+		    return;
+		}
+	    int startWeek = (monthNumber - 1) * 4 + 1;
+	    int endWeek = monthNumber * 4;
+
+	    String sql =
+	        "SELECT l.lesson_id, l.exercise_type, l.lesson_day, l.weekend_number, l.time_slot, " +
+	        "COUNT(DISTINCT b.booking_id) AS attendee_count, " +
+	        "AVG(r.rating) AS avg_rating " +
+	        "FROM lessons l " +
+	        "LEFT JOIN bookings b ON l.lesson_id = b.lesson_id AND b.status = 'attended' " +
+	        "LEFT JOIN reviews r ON b.booking_id = r.booking_id " +
+	        "WHERE l.weekend_number BETWEEN ? AND ? " +
+	        "GROUP BY l.lesson_id, l.exercise_type, l.lesson_day, l.weekend_number, l.time_slot " +
+	        "ORDER BY l.weekend_number, l.lesson_day DESC, l.time_slot";
+
+	    try (Connection conn = DatabaseConnection.connect();
+	         PreparedStatement ps = conn.prepareStatement(sql))
+	    {
+	        if (conn == null)
+	        {
+	            System.out.println("DB connection failed.");
+	            return;
+	        }
+
+	        ps.setInt(1, startWeek);
+	        ps.setInt(2, endWeek);
+
+	        try (ResultSet rs = ps.executeQuery())
+	        {
+	            System.out.println("\n==============================================================");
+	            System.out.println(" MONTHLY LESSON REPORT - MONTH " + monthNumber +
+	                               " (WEEKS " + startWeek + "-" + endWeek + ")");
+	            System.out.println("==============================================================");
+
+	            System.out.printf("%-6s | %-12s | %-10s | %-5s | %-10s | %-10s%n",
+	                    "ID", "Exercise", "Day", "Week", "Attendees", "Avg Rating");
+
+	            System.out.println("--------------------------------------------------------------");
+
+	            boolean found = false;
+
+	            while (rs.next())
+	            {
+	                found = true;
+
+	                int attendees = rs.getInt("attendee_count");
+
+	                double avgRating = rs.getDouble("avg_rating");
+	                String rating = rs.wasNull()
+	                        ? "N/A"
+	                        : String.format("%.1f/5", avgRating);
+
+	                System.out.printf("L%-5d | %-12s | %-10s | W%-4d | %-10d | %-10s%n",
+	                        rs.getInt("lesson_id"),
+	                        rs.getString("exercise_type"),
+	                        rs.getString("lesson_day"),
+	                        rs.getInt("weekend_number"),
+	                        attendees,
+	                        rating);
+	            }
+
+	            if (!found)
+	            {
+	                System.out.println("No lessons found for this month.");
+	            }
+
+	            System.out.println("--------------------------------------------------------------");
+	        }
+
+	    }
+	    catch (Exception e)
+	    {
+	        System.out.println("Report Error: " + e.getMessage());
+	    }
+	}
+
 }

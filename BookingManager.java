@@ -376,4 +376,87 @@ public class BookingManager
 	    }
 	}
 
+
+
+
+
+	public void generateIncomeReport(int monthNumber)
+    {
+        int startWeek = (monthNumber - 1) * 4 + 1;
+        int endWeek = monthNumber * 4;
+        
+
+        String sql =
+                "SELECT l.exercise_type, l.price, " +
+                "COUNT(DISTINCT b.booking_id) AS total_attendees, " + 
+                "(COUNT(DISTINCT b.booking_id) * l.price) AS total_income " +
+                "FROM lessons l " +
+                "LEFT JOIN bookings b ON l.lesson_id = b.lesson_id AND b.status = 'attended' " +
+                "WHERE l.weekend_number BETWEEN ? AND ? " +
+                "GROUP BY l.exercise_type, l.price " +
+                "ORDER BY total_income DESC";
+        
+        try (Connection conn = DatabaseConnection.connect();
+             PreparedStatement ps = conn.prepareStatement(sql))
+        {
+
+            ps.setInt(1, startWeek);
+            ps.setInt(2, endWeek);
+            
+            try (ResultSet rs = ps.executeQuery())
+            {
+                System.out.println("\n--- FINANCIAL BREAKDOWN (Month " + monthNumber + ") ---");
+                System.out.printf("%-15s | %-10s | %-25s%n", "Exercise", "Attendees", "Income Calculation");
+                System.out.println("------------------------------------------------------------");
+                
+                String topExercise = "";
+                double topIncome = 0;
+                boolean found = false;
+
+                while (rs.next())
+                {
+                    found = true;
+                    String type = rs.getString("exercise_type");
+                    int count = rs.getInt("total_attendees");
+                    double unitPrice = rs.getDouble("price");
+                    double total = rs.getDouble("total_income");
+
+                    
+                    if (topExercise.isEmpty())
+                    {
+                        topExercise = type;
+                        topIncome = total;
+                    }
+
+                    
+                    String calcStr = String.format("£%-8.2f (%d x £%.0f)", total, count, unitPrice);
+                    System.out.printf("%-15s | %-10d | %-25s%n", type, count, calcStr);
+                }
+
+                if (found && topIncome > 0)
+                {
+                    System.out.println("------------------------------------------------------------");
+                    
+                    System.out.println("RESULT: The exercise generating the HIGHEST INCOME is " + topExercise.toUpperCase());
+                    System.out.println("Total Income For This Exercise: £" + String.format("%.2f", topIncome));
+                    System.out.println("------------------------------------------------------------\n");
+                }
+                else if (!found)
+                {
+                    System.out.println("No data available for this month.");
+                }
+                else
+                {
+                    System.out.println("No income generated (0 attendees recorded).");
+                }
+            }
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Income Report Error: " + e.getMessage());
+        }
+        
+    }
+
+
 }
